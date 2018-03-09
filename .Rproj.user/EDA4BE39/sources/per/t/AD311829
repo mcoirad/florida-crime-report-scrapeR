@@ -1,0 +1,29 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1520043124834.000,
+    "dirty" : false,
+    "encoding" : "",
+    "folds" : "",
+    "hash" : "0",
+    "id" : "AD311829",
+    "lastKnownWriteTime" : 7308604914264011873,
+    "last_content_update" : 1520043124834,
+    "path" : null,
+    "project_path" : null,
+    "properties" : {
+        "cacheKey" : "D7D98E36",
+        "caption" : "crime_data",
+        "contentUrl" : "grid_resource/gridviewer.html?env=&obj=crime_data&cache_key=D7D98E36",
+        "displayedObservations" : 17,
+        "environment" : "",
+        "object" : "crime_data",
+        "preview" : 0,
+        "totalObservations" : 17,
+        "variables" : 6
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_dataframe"
+}

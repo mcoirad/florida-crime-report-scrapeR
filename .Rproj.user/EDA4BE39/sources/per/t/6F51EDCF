@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1520202754819.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2013367958",
+    "id" : "6F51EDCF",
+    "lastKnownWriteTime" : 1520627854,
+    "last_content_update" : 1520627854857,
+    "path" : "~/reilly lab work/web scraper.R",
+    "project_path" : "web scraper.R",
+    "properties" : {
+        "cursorPosition" : "27,7",
+        "scrollLine" : "0"
+    },
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
