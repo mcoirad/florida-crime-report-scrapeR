@@ -1,2 +1,3 @@
 # Ignore downloaded data
 **/downloaded_data/
+.Rproj.user
