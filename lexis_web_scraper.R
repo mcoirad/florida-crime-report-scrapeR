@@ -1,53 +1,32 @@
-#install.packages("RSelenium")
 library(RSelenium)
 library(futile.logger)
 library(utils)
+#library(jmvcore)
 
-### Useful try/catch function
-# https://stackoverflow.com/questions/20770497/how-to-retry-a-statement-on-error
+# Import try/catch function
+source("retry_function.R")
 
-retry <- function(expr, isError=function(x) "try-error" %in% class(x), maxErrors=20, sleep=0.1, retryFunction = function() {}, returnError = TRUE) {
-  attempts = 0
-  retval = try(eval(expr))
-  while (isError(retval)) {
-    attempts = attempts + 1
-    if (attempts >= maxErrors) {
-      if (returnError == TRUE) {
-        msg = sprintf("retry: too many retries [[%s]]", capture.output(str(retval)))
-        flog.fatal(msg)
-        stop(msg)
-      } else {
-        return ("FAILURE")
-      }
-    } else {
-      msg = sprintf("retry: error in attempt %i/%i [[%s]]", attempts, maxErrors, 
-                    capture.output(str(retval)))
-      flog.error(msg)
-      warning(msg)
-    }
-    if (sleep > 0) Sys.sleep(sleep)
-    retryFunction()
-    retval = try(eval(expr))
-  }
-  return(retval)
-}
-
-
-### Code
-
+### Settings
+start_date <- "9/1/2017"
+end_date <- "11/4/2017"
 
 remDr <- RSelenium::rsDriver()
 
 remDr$client$maxWindowSize(winHand = "current") 
 
-data_write_dir <- paste0(getwd(), "/downloaded_data")
+data_write_dir <- paste0(getwd(), "/downloaded_lexis_data")
 
-zipcode_dir <- paste0(getwd(), "/zipcodes")
+zipcode_dir <- paste0(getwd(), "/lexis_zipcodes")
 
 done_zipcodes <- list.files(data_write_dir)
 
 done_zipcodes <- sapply( strsplit(sapply(strsplit(done_zipcodes,"[_]"), `[`, 2), "[.]"), '[', 1 )
 
+
+# Main function, takes: 
+#   zipcode of area to be searched, 
+#   county/city name for purposes of naming file, and 
+#   sleep-timer which will make scraping slower, pausing between the javascript actions.
 getCrimeData <- function(zipcode, county, sleeptimer = 1) {
   
   # if zipcode is already done, skip
@@ -58,7 +37,29 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1) {
   
   print(paste("Scraping crime data at", zipcode))
   
-  remDr$client$navigate("https://www.crimemapping.com/map/fl/manateecounty#")
+  remDr$client$navigate("https://communitycrimemap.com/")
+  
+  # Remove dialogs if they exist
+  if (retry(announcements_button <- remDr$client$findElements('xpath', "//*[@id=\"ext-gen177\"]"), maxErrors=5) != "FAILURE") {
+    announcements_button[[1]]$clickElement()
+  }
+  
+  if (retry(announcements_button <- remDr$client$findElements('xpath', "//*[@id=\"ext-gen153\"]"), maxErrors=5) != "FAILURE") {
+    announcements_button[[1]]$clickElement()
+  }
+  
+  # Search for zipcode
+  GetAddressInput <- function() { address_input <<- remDr$client$findElement(using = "css", "[id = 'search-address-input']") }
+  retry(GetAddressInput(), retryFunction = GetAddressInput())
+  address_input$clearElement()
+  retry(address_input$sendKeysToElement(list(as.character(zipcode))), retryFunction = GetAddressInput())
+  
+  # Click Submit
+  GetSearchSubmit <- function() { search_submit <<- remDr$client$findElement(using = "css", "[id = 'search-submit-button']") }
+  retry(GetSearchSubmit(), retryFunction = GetSearchSubmit())
+  search_submit$clickElement()
+  
+  //*[@id="map_canvas"]/div/div/div[8]/div[1]/div/button[2]
   
   what_button <- remDr$client$findElement(using = 'id', value = "filtersWhat")
   
@@ -112,16 +113,16 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1) {
   getFromDate<- function() { fromDate <<- remDr$client$findElement(using = "css", "[id = 'dateFrom']")}
   getFromDate()
   fromDate$clearElement()
-  retry(fromDate$sendKeysToElement(list("9/5/2017")), retryFunction = getFromDate())
+  retry(fromDate$sendKeysToElement(list(start_date)), retryFunction = getFromDate())
   
   getToDate<- function() { toDate <<- remDr$client$findElement(using = "css", "[id = 'dateTo']") }
   getToDate()
   toDate$clearElement()
-  retry(toDate$sendKeysToElement(list("11/4/2017")), retryFunction = getToDate())
+  retry(toDate$sendKeysToElement(list(end_date)), retryFunction = getToDate())
   
   getFromDate()
   fromDate$clearElement()
-  retry(fromDate$sendKeysToElement(list("9/5/2017")), retryFunction = getFromDate())
+  retry(fromDate$sendKeysToElement(list(start_date)), retryFunction = getFromDate())
   
   # Apply
   script <- "Map.ApplyExplicitDate();"
@@ -168,6 +169,14 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1) {
       return (NULL) 
     }
   }
+  # same for second status bar
+  if (retry(statusbar <<- remDr$client$findElements('xpath', "//*[@id=\"divStatusBarNoDataProvided\"]"), maxErrors=5) != "FAILURE") {
+    if (!is.element("visibility: hidden;", statusbar[[1]]$getElementAttribute("style"))) {
+      print(paste("Skipping zipcode,", zipcode, ", no records found."))
+      write.csv("", file=paste0(data_write_dir, "/", county, "_", zipcode, ".csv"))
+      return (NULL) 
+    }
+  }
   
   
   
@@ -204,14 +213,14 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1) {
       
       k <- i + (j * 15 - 15)
       img_xpath <<- paste0("//*[@id=\"CrimeIncidents\"]/div[2]/table/tbody/tr[", i, "]/td[2]/img")
-      retry(getImage(), sleep = 0.5, retryFunction = getTbody())
-      retry(getImageUrl(), sleep = 0.5, retryFunction = getImage())
+      retry(getImage(), sleep = 0.5, retryFunction = getTbody)
+      retry(getImageUrl(), sleep = 0.5, retryFunction = getImage)
       retry(crime_data[k,1] <- strsplit(image_url, "[/]")[[1]][8])
-      retry(crime_data[k,2] <- as.character(tbody[i * 7 - 4][[1]]$getElementText()), retryFunction = getTbody())
-      retry(crime_data[k,3] <- as.character(tbody[i * 7 - 3][[1]]$getElementText()), retryFunction = getTbody())
-      retry(crime_data[k,4] <- as.character(tbody[i * 7 - 2][[1]]$getElementText()), retryFunction = getTbody())
-      retry(crime_data[k,5] <- as.character(tbody[i * 7 - 1][[1]]$getElementText()), retryFunction = getTbody())
-      retry(crime_data[k,6] <- as.character(tbody[i * 7][[1]]$getElementText()), retryFunction = getTbody())
+      retry(crime_data[k,2] <- as.character(tbody[i * 7 - 4][[1]]$getElementText()), retryFunction = getTbody)
+      retry(crime_data[k,3] <- as.character(tbody[i * 7 - 3][[1]]$getElementText()), retryFunction = getTbody)
+      retry(crime_data[k,4] <- as.character(tbody[i * 7 - 2][[1]]$getElementText()), retryFunction = getTbody)
+      retry(crime_data[k,5] <- as.character(tbody[i * 7 - 1][[1]]$getElementText()), retryFunction = getTbody)
+      retry(crime_data[k,6] <- as.character(tbody[i * 7][[1]]$getElementText()), retryFunction = getTbody)
       
     }
     
@@ -226,38 +235,3 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1) {
   print("Writing Data to File")
   write.csv(crime_data, file=paste0(data_write_dir, "/", county, "_", zipcode, ".csv"))
 }
-
-# iterate through list of zipcodes
-for (f in list.files(zipcode_dir)) {
-  zipcodes <- read.table(paste0(zipcode_dir, "/", f))
-  for (z in 1:nrow(zipcodes)) {
-    zipcode <- zipcodes[z,]
-    retry(getCrimeData(as.character(zipcode), county = strsplit(f, "[.]")[[1]][1], sleeptimer = 2), maxErrors= 5, retryFunction = function() {
-      tryCatch({remDr$client$close()}, error=function(e){})
-      remDr <<- RSelenium::rsDriver()
-      remDr$client$maxWindowSize(winHand = "current") 
-    })
-  }
-  
-}
-
-
-zipcodes <- read.table(paste0(zipcode_dir, "/", "hernando.txt"))
-
-for (z in 1:nrow(manatee_zipcodes)) {
-  zipcode <- manatee_zipcodes[z,]
-  getCrimeData(as.character(zipcode), sleeptimer = 2)
-}
-
-
-cool_data <- data.frame(X="", type="", description="", incident_num="", location="", agency="", date="", stringsAsFactors=FALSE)
-
-for (i in list.files(paste0(getwd(), "/", "downloaded_data"))) {
-  cool_data <- rbind(cool_data, read.csv(paste0(getwd(), "/", "downloaded_data", "/", i)))
-}
-cool_data <- cool_data[,-1]
-table(duplicated(cool_data))
-
-
-
-
