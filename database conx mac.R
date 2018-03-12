@@ -1,20 +1,30 @@
 require("RPostgreSQL")
 
 # Get files fro VoterDetail directory
-data_directory <- "D:/Poli Sci data/20171010_VoterDetail/20171010_VoterDetail"
+data_directory <- "/Users/pbl/Documents/20171010_VoterDetail"
 
 # List files
 data_files <- list.files(data_directory)
 
+# Already Geocoded directory
+
+geocode_dir <- paste0(data_directory, "/geocoded")
+
+# already coded files
+geocoded_files <- list.files(geocode_dir)
+
 # usernames
-# pc 
-user <- "postgres"
+# mac
+user <- "pbl"
 
 # create a connection
 # save the password that we can "hide" it as best as we can by collapsing it
 
 # pc
-pw <- { "admin" }
+#pw <- { "admin" }
+
+# mac
+pw <- { "Student!"}
 
 # loads the PostgreSQL driver
 drv <- dbDriver("PostgreSQL")
@@ -22,11 +32,17 @@ drv <- dbDriver("PostgreSQL")
 # note that "con" will be used later in each connection to the database
 con <- dbConnect(drv, dbname = "geocoder",
                  host = "localhost", port = 5432,
-                 user = user, password = pw)
+                 user = "pbl", password = pw)
 rm(pw) # removes the password
 
 # Read County level data
-for (j in 22:length(data_files)) {
+for (j in 1:length(data_files)) {
+  
+  # Skip if already geocoded
+  if(data_files[j] %in% geocoded_file) { 
+    cat(paste0("Skipping: ", data_files[j], ", already geocoded.\n"))
+    next 
+    }
   
   # Add a slash
   test <- paste0(data_directory, "/", data_files[j])
@@ -35,11 +51,11 @@ for (j in 22:length(data_files)) {
   county_data <- read.delim(test, header=FALSE)
   county_data$lon <- NA
   county_data$lat <- NA
-
+  
   
   # Geocode county level data
   for (i in 1:nrow(county_data)) {
-    if (j == 1 && i < 3991) {next}
+    
     # Set postgresql query with address
     #clean street name
     street_address <- gsub('\'','', as.character(county_data[i,8]))
