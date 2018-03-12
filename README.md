@@ -6,13 +6,15 @@ Web scraping and geocoding methods for public voter and crime data in R
 
 This project requires the set-up of a PostgreSQL database with PostGIS installed.
 
-TODO: include instructions for setting this up
+[A quick tutorial setting this up is located here](https://docs.google.com/document/d/1hhwa-ivnAsKP2QJlwx_KGMGpTV4GsyMVnBgJx8dnbbk/edit?usp=sharing)
 
 ## Running the Geocoder
 
 The geocoder is set to run on data obtained through CDs throught the Florida Department of Elections. 
 
-TODO: instructions
+Edit the 'database_conx.R' file for your system to point to the folder containing the voter data, and modify the database connection user and password if it is different from what is listed there.
+
+Script should output a modified file for each county file in the dataset.
 
 ## Running the Crime Report Web Scraper
 
