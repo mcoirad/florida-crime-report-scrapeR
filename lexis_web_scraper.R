@@ -22,9 +22,19 @@ zipcode_dir <- paste0(getwd(), "/lexis_zipcodes")
 
 done_zipcodes <- list.files(data_write_dir)
 
-done_zipcodes <- sapply( strsplit(sapply(strsplit(done_zipcodes,"[_]"), `[`, 2), "[.]"), '[', 1 )
+#done_zipcodes <- sapply( strsplit(sapply(strsplit(done_zipcodes,"[_]"), `[`, 2), "[.]"), '[', 1 )
 
-crime_cat <- list(Death = c(1,2,3), Sex = c(4,5), Robbery = c(6,7), Assault = c(8,9), Burglary = c(10, 11), Theft = c(12,13,14,15), Auto = c(16,17), Arson = c(18), Drugs = c(19,20,21), Misc = c(22, 23, 24, 25), Other = c(26, 27))
+crime_cat <- list(Death = c(1,2,3), 
+                  Sex = c(4,5), 
+                  RobberyCommercial = c(6), RobberyIndividual = c(7), 
+                  Assault = c(8,9), 
+                  BurglaryCommercial = c(10), BurglaryResidential = c(11), 
+                  Theft = c(12), Fraud = c(13), Shoplifting = c(14), TheftOther = c(15), 
+                  Auto = c(16,17), 
+                  Arson = c(18), 
+                  DUI = c(19), Alcohol = c(20), Drugs = c(21), 
+                  Vandalism = c(24), Misc = c(22, 23, 25), 
+                  OtherNonCrime = c(26), OtherCrime= c(27))
 
 # Main function, takes: 
 #   zipcode of area to be searched, 
@@ -33,9 +43,10 @@ crime_cat <- list(Death = c(1,2,3), Sex = c(4,5), Robbery = c(6,7), Assault = c(
 getCrimeData <- function(zipcode, county, sleeptimer = 1, crime = 1:27) {
   
   crime_name <- names(crime_cat)[crime_cat %in% list(crime)]
+  save_file <- paste0(data_write_dir, "/", county, "_", zipcode, "_", crime_name, ".csv")
   
   # if zipcode is already done, skip
-  if (zipcode %in% done_zipcodes) {
+  if (save_file %in% done_zipcodes) {
     print(paste("skipping", zipcode))
     return (NULL)
   }
@@ -181,7 +192,7 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1, crime = 1:27) {
   
   if (records_text == "iew") {
     print(paste("Skipping zipcode,", zipcode, ", no records found."))
-    write.csv("", file=paste0(data_write_dir, "/", county, "_", zipcode, "_", crime_name, ".csv"))
+    write.csv("", file=save_file)
     return (NULL) 
   }
   
@@ -241,7 +252,7 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1, crime = 1:27) {
  
   
   print("Writing Data to File")
-  write.csv(crime_data, file=paste0(data_write_dir, "/", county, "_", zipcode, "_", crime_name, ".csv"))
+  write.csv(crime_data, file=save_file)
   
 }
 
