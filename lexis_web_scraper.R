@@ -24,12 +24,15 @@ done_zipcodes <- list.files(data_write_dir)
 
 done_zipcodes <- sapply( strsplit(sapply(strsplit(done_zipcodes,"[_]"), `[`, 2), "[.]"), '[', 1 )
 
+crime_cat <- list(Death = c(1,2,3), Sex = c(4,5), Robbery = c(6,7), Assault = c(8,9), Burglary = c(10, 11), Theft = c(12,13,14,15), Auto = c(16,17), Arson = c(18), Drugs = c(19,20,21), Misc = c(22, 23, 24, 25), Other = c(26, 27))
 
 # Main function, takes: 
 #   zipcode of area to be searched, 
 #   county/city name for purposes of naming file, and 
 #   sleep-timer which will make scraping slower, pausing between the javascript actions.
-getCrimeData <- function(zipcode, county, sleeptimer = 1) {
+getCrimeData <- function(zipcode, county, sleeptimer = 1, crime = 1:27) {
+  
+  crime_name <- names(crime_cat)[crime_cat %in% list(crime)]
   
   # if zipcode is already done, skip
   if (zipcode %in% done_zipcodes) {
@@ -69,6 +72,39 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1) {
   
   Sys.sleep(1 * sleep_timer)
   
+  # Open Crime/events Bar
+  
+  GetCrimeButton <- function() { crime_button <<- remDr$client$findElements('css', "div[class*=\"x-tool x-tool-toggle\"]") }
+  GetCrimeButton()
+  
+  retry(crime_button[[4]]$clickElement(), retryFunction = GetCrimeButton, maxErrors =1, returnError = FALSE)
+  
+  Sys.sleep(1 * sleep_timer)
+  
+  crime_col <- crime
+  
+  # Check crimes
+  GetCrimeChecked <- function (crime_num) {
+    css_selector <- paste0("[id = 'class-", crime_num, "-checkbox']")
+    crime_checked <<- remDr$client$findElement(using = "css", css_selector) 
+    }
+  
+  all_crimes <- 1:27
+  crimes_not_want <- all_crimes[!all_crimes %in% crime_col]
+  
+  # Check only crimes in the provided list
+  for (c in all_crimes) {
+    GetCrimeChecked(c)
+    retry(
+        if ((c %in% crimes_not_want) && (!length(crime_checked$getElementAttribute("checked")) == 0)) {
+        crime_checked$clickElement()
+      } else if (!(c %in% crimes_not_want) && length(crime_checked$getElementAttribute("checked")) == 0) {
+        crime_checked$clickElement()
+      }
+    , retryFunction = GetCrimeChecked(c))
+    Sys.sleep(0.25 * sleep_timer)
+  }
+  
   # Open Date Range Bar
   
   GetDateRangeButton <- function() { date_range_button <<- remDr$client$findElements('css', "div[class*=\"x-tool x-tool-toggle\"]") }
@@ -98,7 +134,7 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1) {
   # Zoom out 3 times
   GetZoomButton <- function() { zoom_out_button <<- remDr$client$findElement(using = "css", "[title='Zoom out']") }
   retry(GetZoomButton(), retryFunction = GetZoomButton)
-  
+  zoom_out_button$clickElement()
   zoom_out_button$clickElement()
   zoom_out_button$clickElement()
   
@@ -145,7 +181,7 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1) {
   
   if (records_text == "iew") {
     print(paste("Skipping zipcode,", zipcode, ", no records found."))
-    write.csv("", file=paste0(data_write_dir, "/", county, "_", zipcode, ".csv"))
+    write.csv("", file=paste0(data_write_dir, "/", county, "_", zipcode, "_", crime_name, ".csv"))
     return (NULL) 
   }
   
@@ -202,8 +238,10 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1) {
     
   }
   
+ 
+  
   print("Writing Data to File")
-  write.csv(crime_data, file=paste0(data_write_dir, "/", county, "_", zipcode, ".csv"))
+  write.csv(crime_data, file=paste0(data_write_dir, "/", county, "_", zipcode, "_", crime_name, ".csv"))
   
 }
 
@@ -212,10 +250,13 @@ for (f in list.files(zipcode_dir)) {
   zipcodes <- read.table(paste0(zipcode_dir, "/", f))
   for (z in 1:nrow(zipcodes)) {
     zipcode <- zipcodes[z,]
-    retry(getCrimeData(as.character(zipcode), county = strsplit(f, "[.]")[[1]][1], sleeptimer = 2), maxErrors= 10, retryFunction = function() {
-      tryCatch({remDr$client$close()}, error=function(e){})
-      remDr <<- RSelenium::rsDriver()
-      remDr$client$maxWindowSize(winHand = "current") 
-    })
+    for (c in crime_cat) {
+      retry(getCrimeData(as.character(zipcode), county = strsplit(f, "[.]")[[1]][1], sleeptimer = 2, crime = c), maxErrors= 10, retryFunction = function() {
+        tryCatch({remDr$client$close()}, error=function(e){})
+        remDr <<- RSelenium::rsDriver()
+        remDr$client$maxWindowSize(winHand = "current") 
+      })
+    }
+    
   }
 }
