@@ -7,8 +7,10 @@ library(utils)
 source("retry_function.R")
 
 ### Settings
-start_date <- "9/1/2017"
-end_date <- "11/4/2017"
+
+sleep_timer <- 2
+
+date_range <- "1 year"
 
 remDr <- RSelenium::rsDriver()
 
@@ -40,198 +42,180 @@ getCrimeData <- function(zipcode, county, sleeptimer = 1) {
   remDr$client$navigate("https://communitycrimemap.com/")
   
   # Remove dialogs if they exist
-  if (retry(announcements_button <- remDr$client$findElements('xpath', "//*[@id=\"ext-gen177\"]"), maxErrors=5) != "FAILURE") {
-    announcements_button[[1]]$clickElement()
-  }
+  GetAnnounceButton <- function() {announcements_button <<- remDr$client$findElements('css', "button[id*=\"ext-gen\"]")}
   
-  if (retry(announcements_button <- remDr$client$findElements('xpath', "//*[@id=\"ext-gen153\"]"), maxErrors=5) != "FAILURE") {
-    announcements_button[[1]]$clickElement()
-  }
+  GetAnnounceButton()
+  
+  retry(announcements_button[[1]]$clickElement(), retryFunction = GetAnnounceButton, maxErrors =1, returnError = FALSE)
+  retry(announcements_button[[2]]$clickElement(), retryFunction = GetAnnounceButton, maxErrors =1, returnError = FALSE)
+  retry(announcements_button[[1]]$clickElement(), retryFunction = GetAnnounceButton, maxErrors =1, returnError = FALSE)
+  retry(announcements_button[[2]]$clickElement(), retryFunction = GetAnnounceButton, maxErrors =1, returnError = FALSE)
+  
+  Sys.sleep(1 * sleep_timer)
+  
   
   # Search for zipcode
   GetAddressInput <- function() { address_input <<- remDr$client$findElement(using = "css", "[id = 'search-address-input']") }
-  retry(GetAddressInput(), retryFunction = GetAddressInput())
+  retry(GetAddressInput(), retryFunction = GetAddressInput)
   address_input$clearElement()
-  retry(address_input$sendKeysToElement(list(as.character(zipcode))), retryFunction = GetAddressInput())
+  retry(address_input$sendKeysToElement(list(as.character(zipcode))), retryFunction = GetAddressInput)
+  
+  Sys.sleep(1 * sleep_timer)
   
   # Click Submit
   GetSearchSubmit <- function() { search_submit <<- remDr$client$findElement(using = "css", "[id = 'search-submit-button']") }
-  retry(GetSearchSubmit(), retryFunction = GetSearchSubmit())
+  retry(GetSearchSubmit(), retryFunction = GetSearchSubmit)
   search_submit$clickElement()
   
-  //*[@id="map_canvas"]/div/div/div[8]/div[1]/div/button[2]
+  Sys.sleep(1 * sleep_timer)
   
-  what_button <- remDr$client$findElement(using = 'id', value = "filtersWhat")
+  # Open Date Range Bar
   
-  # Open crime type filter menu
-  script <- "Map.LoadFiltersPanel('what'); Map.TogglePinGraphic(true);"
-  remDr$client$executeScript(script, args = list(""))
+  GetDateRangeButton <- function() { date_range_button <<- remDr$client$findElements('css', "div[class*=\"x-tool x-tool-toggle\"]") }
+  GetDateRangeButton()
   
-  # Filter out non-violent crime violent crimes
-  # burglary
-  script <- "Map.WhatPanelClick('3', false);"
-  remDr$client$executeScript(script, args = list(""))
-  # disturbing the peace
-  script <- "Map.WhatPanelClick('4', false);"
-  remDr$client$executeScript(script, args = list(""))
-  # drugs
-  script <- "Map.WhatPanelClick('5', false);"
-  remDr$client$executeScript(script, args = list(""))
-  # DUI
-  script <- "Map.WhatPanelClick('6', false);"
-  remDr$client$executeScript(script, args = list(""))
-  # Fraud
-  script <- "Map.WhatPanelClick('7', false);"
-  remDr$client$executeScript(script, args = list(""))
-  # motor vehicle theft
-  script <- "Map.WhatPanelClick('9', false);"
-  remDr$client$executeScript(script, args = list(""))
-  # larceny
-  script <- "Map.WhatPanelClick('12', false);"
-  remDr$client$executeScript(script, args = list(""))
-  # vandalism
-  script <- "Map.WhatPanelClick('13', false);"
-  remDr$client$executeScript(script, args = list(""))
-  # vehicle break in
-  script <- "Map.WhatPanelClick('14', false);"
-  remDr$client$executeScript(script, args = list(""))
+  retry(date_range_button[[3]]$clickElement(), retryFunction = GetDateRangeButton, maxErrors =1, returnError = FALSE)
   
-  Sys.sleep(0.5 * sleeptimer)
+  Sys.sleep(1 * sleep_timer)
+  
+  # Enter date range (1 year)
+  getDateRange<- function() { dateRange <<- remDr$client$findElements(using = "css", "input[class*= 'x-form-text x-form-field']")[[2]]}
+  getDateRange()
+  Sys.sleep(1 * sleep_timer)
+  
+  dateRange$clearElement()
+  retry(dateRange$sendKeysToElement(list(date_range, "\uE007")), retryFunction = getDateRange)
+
+  Sys.sleep(1 * sleep_timer)
+  
+  retry(dateRange$sendKeysToElement(list("\uE007")), retryFunction = getDateRange)
   
   
-  # Open time filter menu
-  script <- "Map.LoadFiltersPanel('when'); Map.TogglePinGraphic(true);"
-  remDr$client$executeScript(script, args = list(""))
+  # Get zoom in
+  GetZoomInButton <- function() { zoom_in_button <<- remDr$client$findElement(using = "css", "[title='Zoom in']") }
+  retry(GetZoomInButton(), retryFunction = GetZoomInButton)
   
-  # Set custom date range
-  script <- "Map.CheckDateRange('Custom Time Range');"
-  remDr$client$executeScript(script, args = list(""))
+  # Zoom out 3 times
+  GetZoomButton <- function() { zoom_out_button <<- remDr$client$findElement(using = "css", "[title='Zoom out']") }
+  retry(GetZoomButton(), retryFunction = GetZoomButton)
   
-  Sys.sleep(1* sleeptimer)
+  zoom_out_button$clickElement()
+  zoom_out_button$clickElement()
   
-  # When calling elements from the DOM we have to wrap in the try function in case it fails lol
-  getFromDate<- function() { fromDate <<- remDr$client$findElement(using = "css", "[id = 'dateFrom']")}
-  getFromDate()
-  fromDate$clearElement()
-  retry(fromDate$sendKeysToElement(list(start_date)), retryFunction = getFromDate())
+  Sys.sleep(1 * sleep_timer)
   
-  getToDate<- function() { toDate <<- remDr$client$findElement(using = "css", "[id = 'dateTo']") }
-  getToDate()
-  toDate$clearElement()
-  retry(toDate$sendKeysToElement(list(end_date)), retryFunction = getToDate())
+  # Switch to data tab
+  GetDataTab <- function() { data_tab <<- remDr$client$findElements(using = "css", "a[class='x-tab-right']") }
+  GetDataTab()
+  data_tab[[2]]$clickElement()
   
-  getFromDate()
-  fromDate$clearElement()
-  retry(fromDate$sendKeysToElement(list(start_date)), retryFunction = getFromDate())
+  Sys.sleep(1 * sleep_timer)
   
-  # Apply
-  script <- "Map.ApplyExplicitDate();"
-  remDr$client$executeScript(script, args = list(""))
   
-  Sys.sleep(0.5 * sleeptimer)
-  
-  # Close time filter menu
-  script <- "Map.LoadFiltersPanel('when'); Map.TogglePinGraphic(true);"
-  remDr$client$executeScript(script, args = list(""))
-  
-  # Location Search
-  zipcodeInput<- remDr$client$findElement(using = "css", "[id = 'locationSearch']")
-  zipcodeInput$clearElement()
-  zipcodeInput$sendKeysToElement(list(zipcode, key = "enter"))
-  script <- "Map.GeocodeSearchAddress();"
-  remDr$client$executeScript(script, args = list(""))
-  
-  # Zoom out a couple of times
-  
-  script <- "Map.ZoomOut();"
-  Sys.sleep(1 * sleeptimer)
-  remDr$client$executeScript(script, args = list(""))
-  Sys.sleep(1 * sleeptimer)
-  remDr$client$executeScript(script, args = list(""))
-  Sys.sleep(1 * sleeptimer)
-  remDr$client$executeScript(script, args = list(""))
-  Sys.sleep(1 * sleeptimer)
-  
-  # If more than 1000 records zoom in once
-  if (retry(statusbar <<- remDr$client$findElements('xpath', "//*[@id=\"divStatusBarMaxRecords\"]"), maxErrors=5) != "FAILURE") {
-    while (!is.element("visibility: hidden", strsplit(as.character(statusbar[[1]]$getElementAttribute("style")), "[;]")[[1]][1])) {
-      script <- "Map.ZoomIn();"
-      remDr$client$executeScript(script, args = list(""))
-      Sys.sleep(1 * sleeptimer)
+  # Get number of records
+  GetRecords <- function() { records_num <<- remDr$client$findElements(using = "css", "div[class='xtb-text']") }
+  GetRecords()
+  GetRecordsText <- function() { 
+    records_text <<- records_num[[3]]$getElementText() 
+    records_text <<- substr(records_text, (nchar(records_text) - 2), nchar(records_text))
     }
+  GetRecordsText()
+  
+  # Create method for switching to map tab
+  GetMapTab <- function() { map_tab <<- remDr$client$findElements(using = "css", "a[class='x-tab-right']") }
+  
+  # Zoom in until < 500 records
+  while (records_text == '500') {
+    # Switch to map tab
+    GetMapTab()
+    map_tab[[1]]$clickElement()
+    
+    # Zoom in once
+    zoom_in_button$clickElement()
+    Sys.sleep(1 * sleep_timer)
+    #Switch to data tab
+    GetDataTab()
+    data_tab[[2]]$clickElement()
+    # update Records
+    GetRecords()
+    GetRecordsText()
   }
   
-  # If no records skip, but an write empty file.
-  if (retry(statusbar <<- remDr$client$findElements('xpath', "//*[@id=\"divStatusBarNoDataFound\"]"), maxErrors=5) != "FAILURE") {
-    if (!is.element("visibility: hidden;", statusbar[[1]]$getElementAttribute("style"))) {
-      print(paste("Skipping zipcode,", zipcode, ", no records found."))
-      write.csv("", file=paste0(data_write_dir, "/", county, "_", zipcode, ".csv"))
-      return (NULL) 
-    }
-  }
-  # same for second status bar
-  if (retry(statusbar <<- remDr$client$findElements('xpath', "//*[@id=\"divStatusBarNoDataProvided\"]"), maxErrors=5) != "FAILURE") {
-    if (!is.element("visibility: hidden;", statusbar[[1]]$getElementAttribute("style"))) {
-      print(paste("Skipping zipcode,", zipcode, ", no records found."))
-      write.csv("", file=paste0(data_write_dir, "/", county, "_", zipcode, ".csv"))
-      return (NULL) 
-    }
+  # if no records, skip and write empty file
+  
+  if (records_text == "iew") {
+    print(paste("Skipping zipcode,", zipcode, ", no records found."))
+    write.csv("", file=paste0(data_write_dir, "/", county, "_", zipcode, ".csv"))
+    return (NULL) 
   }
   
+  # Extract only numbers
+  records_text <- as.numeric(gsub("[^0-9]", "", records_text))
+  
+  #empty dataset
+  crime_data <- data.frame(type="", incident_num="", crime="", date="", location="", address="", accuracy="", agency="",stringsAsFactors=FALSE)
+  
+  image = ""
+  getImageUrl <- function(x) {image_url <<- as.character(x$getElementAttribute("src"))}
   
   
-  # Load report view
-  script <- "Map.OpenReport();"
-  remDr$client$executeScript(script, args = list(""))
-  Sys.sleep(5 * sleeptimer)
-  # get number of records
-  getRecordDiv <- function () { record_div <<- remDr$client$findElement('xpath', "//*[@id=\"divCrimeReportHeader\"]/span[2]")}
-  retry(getRecordDiv(), sleep = (0.5 * sleeptimer))
-  num_record <- retry(as.numeric(strsplit(as.character(record_div$getElementText()), " ")[[1]][1]), retryFunction=getRecordDiv)
-  
-  # data frame
-  crime_data <- data.frame(type="", description="", incident_num="", location="", agency="", date="", stringsAsFactors=FALSE)
-  
-  # iterate through pages
-  for (j in 1:(num_record %/% 15 + 1)) {
-    # get images
-    images <<- remDr$client$findElements('xpath', "//img")
+  # Iterate through data table
+  for (j in 1:(records_text %/% 20 + 1)) {
+    GetImages <- function () {images <<- remDr$client$findElements('xpath', "//img")}
     
     # get tag body
-    tbody <<- remDr$client$findElements('xpath', "//td[@role = 'gridcell']")
+    GetColID <- function() {col_id <<- remDr$client$findElements('css', "div[class='x-grid3-cell-inner x-grid3-col-1']")}
+    GetColCrime <- function() {col_crime <<- remDr$client$findElements('css', "div[class='x-grid3-cell-inner x-grid3-col-2']")}
+    GetColDate <- function() {col_date <<- remDr$client$findElements('css', "div[class='x-grid3-cell-inner x-grid3-col-3']")}
+    GetColLoc <- function() {col_location <<- remDr$client$findElements('css', "div[class='x-grid3-cell-inner x-grid3-col-4']")}
+    GetColAdd <- function() {col_address <<- remDr$client$findElements('css', "div[class='x-grid3-cell-inner x-grid3-col-5']")}
+    GetColAcc <- function() {col_accuracy <<- remDr$client$findElements('css', "div[class='x-grid3-cell-inner x-grid3-col-6']")}
+    GetColAgency <- function() {col_agency <<- remDr$client$findElements('css', "div[class='x-grid3-cell-inner x-grid3-col-7']")}
     
-    # set refresh/retry functions
-    getTbody <- function() {tbody <<- remDr$client$findElements('xpath', "//td[@role = 'gridcell']")}
-    img_xpath <<- ""
-    getImage <- function() {image <<- remDr$client$findElement('xpath', img_xpath)}
-    getImageUrl <- function() {image_url <<- as.character(image$getElementAttribute("src"))}
-    retry(getTbody())
-    
-    # Extract data
-    for (i in 1:(length(tbody) / 7 )) {
+    GetColID()
+    GetColCrime()
+    GetColDate()
+    GetColLoc()
+    GetColAdd()
+    GetColAcc()
+    GetColAgency()
+    for (i in 1:length(col_id)) {
+      k <- i + (j * 20 - 20)
+      retry(GetImages())
+      retry(getImageUrl(images[[84 + i - 1]]), sleep = 0.5, retryFunction = GetImages)
+      retry(crime_data[k,1] <- image_url)
+      retry(crime_data[k,2] <- as.character(col_id[[i]]$getElementText()[[1]]), retryFunction = GetColID)
+      retry(crime_data[k,3] <- as.character(col_crime[[i]]$getElementText()[[1]]), retryFunction = GetColCrime)
+      retry(crime_data[k,4] <- as.character(col_date[[i]]$getElementText()[[1]]), retryFunction = GetColDate)
+      retry(crime_data[k,5] <- as.character(col_location[[i]]$getElementText()[[1]]), retryFunction = GetColLoc)
+      retry(crime_data[k,6] <- as.character(col_address[[i]]$getElementText()[[1]]), retryFunction = GetColAdd)
+      retry(crime_data[k,7] <- as.character(col_accuracy[[i]]$getElementText()[[1]]), retryFunction = GetColAcc)
+      retry(crime_data[k,8] <- as.character(col_agency[[i]]$getElementText()[[1]]), retryFunction = GetColAgency)
       
-      
-      k <- i + (j * 15 - 15)
-      img_xpath <<- paste0("//*[@id=\"CrimeIncidents\"]/div[2]/table/tbody/tr[", i, "]/td[2]/img")
-      retry(getImage(), sleep = 0.5, retryFunction = getTbody)
-      retry(getImageUrl(), sleep = 0.5, retryFunction = getImage)
-      retry(crime_data[k,1] <- strsplit(image_url, "[/]")[[1]][8])
-      retry(crime_data[k,2] <- as.character(tbody[i * 7 - 4][[1]]$getElementText()), retryFunction = getTbody)
-      retry(crime_data[k,3] <- as.character(tbody[i * 7 - 3][[1]]$getElementText()), retryFunction = getTbody)
-      retry(crime_data[k,4] <- as.character(tbody[i * 7 - 2][[1]]$getElementText()), retryFunction = getTbody)
-      retry(crime_data[k,5] <- as.character(tbody[i * 7 - 1][[1]]$getElementText()), retryFunction = getTbody)
-      retry(crime_data[k,6] <- as.character(tbody[i * 7][[1]]$getElementText()), retryFunction = getTbody)
       
     }
-    
-    # Access next page
-    next_page <- remDr$client$findElement('xpath', "//*[@id=\"CrimeIncidents\"]/div[3]/a[3]")
-    next_page$clickElement()
+    next_button <<- remDr$client$findElement('css', "button[class*='x-btn-text x-tbar-page-next']")
+    next_button$clickElement()
     crime_data <<- crime_data
     print(paste0("Scraping page ", j,  " of report"))
-    Sys.sleep(1* sleeptimer)
+    Sys.sleep(1* sleep_timer)
     
   }
+  
   print("Writing Data to File")
   write.csv(crime_data, file=paste0(data_write_dir, "/", county, "_", zipcode, ".csv"))
+  
+}
+
+# iterate through list of zipcodes
+for (f in list.files(zipcode_dir)) {
+  zipcodes <- read.table(paste0(zipcode_dir, "/", f))
+  for (z in 1:nrow(zipcodes)) {
+    zipcode <- zipcodes[z,]
+    retry(getCrimeData(as.character(zipcode), county = strsplit(f, "[.]")[[1]][1], sleeptimer = 2), maxErrors= 10, retryFunction = function() {
+      tryCatch({remDr$client$close()}, error=function(e){})
+      remDr <<- RSelenium::rsDriver()
+      remDr$client$maxWindowSize(winHand = "current") 
+    })
+  }
 }

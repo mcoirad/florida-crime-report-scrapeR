@@ -1,4 +1,5 @@
 # Ignore downloaded data
 **/downloaded_data/
+**/downloaded_lexis_data/
 .Rproj.user
 **/.Rproj.user/
