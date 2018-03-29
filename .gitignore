@@ -3,3 +3,4 @@
 **/downloaded_lexis_data/
 .Rproj.user
 **/.Rproj.user/
+.DS_Store
