@@ -38,8 +38,12 @@ rm(pw) # removes the password
 # Read County level data
 for (j in 1:length(data_files)) {
   
+  if (data_files[j] == "geocoded") {
+    next
+  }
+  
   # Skip if already geocoded
-  if(data_files[j] %in% geocoded_file) { 
+  if(data_files[j] %in% geocoded_files) { 
     cat(paste0("Skipping: ", data_files[j], ", already geocoded.\n"))
     next 
     }
@@ -47,11 +51,15 @@ for (j in 1:length(data_files)) {
   # Add a slash
   test <- paste0(data_directory, "/", data_files[j])
   
+  cat(paste("Beginning:", data_files[j]), "\n")
+  
   # Read county data
   county_data <- read.delim(test, header=FALSE)
   county_data$lon <- NA
   county_data$lat <- NA
   
+  # progress bar
+  pb <- txtProgressBar(min = 0, max = nrow(county_data), style = 3)
   
   # Geocode county level data
   for (i in 1:nrow(county_data)) {
@@ -62,6 +70,13 @@ for (j in 1:length(data_files)) {
     
     # Paste full address with street name, city, state, and zipcode, within query
     address <- paste(street_address, as.character(county_data[i,10]), "FL", as.character(county_data[i, 12]))
+    
+    # Remove backslashes and stuff that appear in rare cases (once every million lines lol)
+    address <- gsub("\\", "", address, fixed=TRUE)
+    address <- gsub("'", "", address, fixed=TRUE)
+    address <- gsub("(", "", address, fixed=TRUE)
+    
+
     query <- paste0("SELECT g.rating, ST_AsText(ST_SnapToGrid(g.geomout,0.00001))  
                     As wktlonlat, (addy).address As stno, (addy).streetname As street, 
                     (addy).streettypeabbrev As styp, (addy).location As city, 
@@ -80,14 +95,16 @@ for (j in 1:length(data_files)) {
     county_data[i,'lon'] <- coord[[1]][2]
     county_data[i,'lat'] <- coord[[1]][3]
     
-    # Print linenumber every 100 rows
-    if (i %% 100 == 0) {print(paste("row", i))}
+    # Print linenumber every 100000 rows
+    #if (i %% 100000 == 0) {print(paste("row", i))}
+    
+    setTxtProgressBar(pb, i)
     
   }
   
   write.table(county_data, file=paste0(data_directory, "/geocoded/", data_files[j]))
   
-  print(paste("Completed:", data_files[j]))
+  cat(paste("Completed:", data_files[j]), "\n")
 }
 
 
