@@ -1,6 +1,7 @@
 # Crime and Voter Turnout in Florida
 
-Web scraping and geocoding methods for public voter and crime data in R
+Web scraping and geocoding methods for public voter and crime data in R.
+The purpose of this project is to provide an accessible base from which to start for any future students of the Political Behavior Lab wishing to perform analysis related to the Florida Dept. of Elections registered voter dataset.
 
 ## Getting Started
 
