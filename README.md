@@ -21,4 +21,6 @@ Script should output a modified file for each county file in the dataset.
 
 These scripts will collect data from online databases for zipcodes specified in files in the respective 'zipcodes' folders. 
 
-TODO: instructions
+They run off of Selenium, a browser testing suite that should be downloaded when you install the 'RSelenium' package.
+
+Relevant dates for the crime mapping can be set at the top of the 'web scraper.R' and 'lexis web scraper.R' files.
