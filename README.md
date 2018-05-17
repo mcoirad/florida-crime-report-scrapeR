@@ -24,3 +24,4 @@ These scripts will collect data from online databases for zipcodes specified in 
 They run off of Selenium, a browser testing suite that should be downloaded when you install the 'RSelenium' package.
 
 Relevant dates for the crime mapping can be set at the top of the 'web scraper.R' and 'lexis web scraper.R' files.
+These scripts collect a lot of duplicates, but these will be cleaned if the scripts are run all the way through.
